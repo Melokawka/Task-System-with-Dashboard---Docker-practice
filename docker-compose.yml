@@ -1,0 +1,99 @@
+version: "3.9"
+services:
+  tasksdb:
+    image: postgres:15
+    container_name: tasksdb
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: tasksdb
+    ports:
+      - "5432:5432"
+    networks:
+      - micro-net
+
+  projectsdb:
+    image: postgres:15
+    container_name: projectsdb
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: projectsdb
+    ports:
+      - "5433:5432"
+    networks:
+      - micro-net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - micro-net
+
+  eureka-server:
+    build: ./eureka-server
+    container_name: eureka-server
+    ports:
+      - "8761:8761"
+    networks:
+      - micro-net
+
+  task-microservice:
+    build: ./task-microservice
+    container_name: task-microservice
+    ports:
+      - "8080:8080"
+    depends_on:
+      - tasksdb
+      - eureka-server
+      - rabbitmq
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://tasksdb:5432/tasksdb
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin
+    networks:
+      - micro-net
+
+  project-microservice:
+    build: ./project-microservice
+    container_name: project-microservice
+    ports:
+      - "8081:8081"
+    depends_on:
+      - projectsdb
+      - eureka-server
+      - rabbitmq
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://projectsdb:5432/projectsdb
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: admin
+    networks:
+      - micro-net
+
+  notification-microservice:
+    build: ./notification-microservice
+    container_name: notification-microservice
+    ports:
+      - "8082:8082"
+    depends_on:
+      - eureka-server
+      - rabbitmq
+    networks:
+      - micro-net
+
+  gateway:
+    build: ./gateway
+    container_name: gateway
+    ports:
+      - "8090:8090"
+    depends_on:
+      - eureka-server
+    networks:
+      - micro-net
+
+networks:
+  micro-net:
+    driver: bridge
